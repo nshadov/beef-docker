@@ -1,5 +1,5 @@
 FROM ruby:2.2
-MAINTAINER ns <ns@ravencloud.net>
+LABEL maintainer "nshadov <ns@ravencloud.net>"
 
 RUN apt-get update && apt-get upgrade -y
 
@@ -16,16 +16,27 @@ RUN apt-get clean && apt-get autoremove
 
 RUN locale-gen UTF-8 en_US && localedef -c -f UTF-8 -i en_US en_US.UTF-8
 
-RUN useradd -ms /bin/bash beef-user
+RUN useradd -mrs /bin/nologin beef-user
 WORKDIR /home/beef-user
 ADD get_config.sh .
 RUN chmod a+rx get_config.sh
+
+
+RUN mkdir /home/beef-user/vol && chown beef-user:beef-user /home/beef-user/vol
+VOLUME ["/home/beef-user/vol"]
 
 USER beef-user
 
 RUN git clone git://github.com/beefproject/beef.git beef-repo
 RUN cp -r beef-repo/* .
 RUN gem install bundler && bundle install
+
+RUN sed -i 's|db_file: "beef.db"|db_file: "vol/beef.db"|' config.yaml
+
+RUN mkdir .beef .aws
+RUN mkdir -p /home/beef-user/extensions/admin_ui/media/
+VOLUME ["/home/beef-user/.aws/"]
+VOLUME ["/home/beef-user/extensions/admin_ui/media/"]
 
 ENV URI_CONFIG s3://base-security-container-config/beef.conf
 ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8"
